@@ -53,3 +53,7 @@
     display: none !important;
   }
 }
+
+#mp3table > tr{
+  border:1px solid black;
+}
