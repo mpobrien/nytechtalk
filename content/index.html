@@ -11,6 +11,7 @@
 	<title>NYC Tech Talks - OUTLOUD.FM</title>
 	
 	<!-- Core and extension CSS files -->
+	<link rel="stylesheet" href="prettify.css">
 	<link rel="stylesheet" href="../core/deck.core.css">
 	<link rel="stylesheet" href="../extensions/goto/deck.goto.css">
 	<link rel="stylesheet" href="../extensions/menu/deck.menu.css">
@@ -25,9 +26,10 @@
 	<!-- Custom CSS just for this page -->
 	<link rel="stylesheet" href="introduction.css">
 	<script src="../modernizr.custom.js"></script>
+	<script src="prettify.js"></script>
 </head>
 
-<body class="deck-container">
+<body class="deck-container" onload="prettyPrint()">
 
 <div class="theme-menu"><!--{{{-->
 	<h2>Themes</h2>	
@@ -189,7 +191,7 @@
     <li class="slide">Producers put messages onto the queue with RPUSH, consumers process them by calling LPOP</li>
     <li class="slide">In NodeJS (Application Server), after an upload completes, we queue up a message saying "upload is done!" like this:
     <pre>
-      <code>
+      <code class="prettyprint">
         fileUpload.on("filedone", function(){
           var uploadedFileInfo = JSON.stringify({"path":fullPath,
                                                  "room":roomname, 
@@ -205,7 +207,7 @@
     
     </li>
     <li class="slide">Our python code for preprocessor looks like this:
-      <pre><code>
+      <pre><code class="prettyprint">
       while True:
         try:
           message = r.blpop("newsongready");
@@ -347,7 +349,6 @@
 	<h2>Other Elements: Video Embeds</h2>
 	<p>Embed videos from your favorite online video service or with an HTML5 video&nbsp;element.</p>
 	
-	<iframe src="http://player.vimeo.com/video/1063136?title=0&amp;byline=0&amp;portrait=0" width="400" height="225" frameborder="0"></iframe>
 	
 	<pre><code>&lt;iframe src=&quot;http://player.vimeo.com/video/1063136?title=0&amp;amp;byline=0&amp;amp;portrait=0&quot; width=&quot;400&quot; height=&quot;225&quot; frameborder=&quot;0&quot;&gt;&lt;/iframe&gt;</code></pre>
 </div>
