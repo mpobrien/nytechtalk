@@ -52,7 +52,8 @@
 </div><!--}}}-->
 
 <div class="slide" id="title-slide"><!--{{{-->
-	<h1>NYC Tech Talks - OUTLOUD.FM</h1>
+	<h1>NYC Tech Talks - OUTLOUD.FM <br>
+	<img src="http://i.imgur.com/LtvMU.gif"></h1>
 </div><!--}}}-->
 
 <div class="slide" id="introduction">
@@ -74,6 +75,13 @@
     <li class="slide">
       <p>over 8,000 songs "liked" (added to favorites list)</p>
 		</li>
+    <li class="slide">
+           <h3>as seen on:</h3>
+         <img src="http://i.imgur.com/zoVpq.png"> 
+         <img src="http://i.imgur.com/cbioL.png"> 
+         <img src="http://i.imgur.com/wp2Kq.png">          
+         <img src="http://i.imgur.com/TuQP6.png">
+                </li> 
 	</ul>
 </div>
 
@@ -84,7 +92,7 @@
 			<h3>Overall architecture</h3>
 		</li>
     <li>
-      <h3>Some useful lessons learned</h2>
+      <h3>Some useful lessons learned</h3>
       <ul>
         <li>How to use redis as a messaging hub</li>
         <li>Pros/Cons of using node.js and a few notes on using it in production</li>
@@ -109,9 +117,10 @@
       <p> <img src="http://nodejs.org/logos/nodejs-black.png"/> </p>
 		</li>
 
-		<div class="slide">
-      <p>(with a little help from python)</p>
-		</div>
+		<li class="slide">
+      			<h3>With a little help from Python</h3>
+     <p> <img src="http://i.imgur.com/XJLaU.png"/> <p/>	
+		</li>
 
 		<li class="slide">
 			<h3>We use redis (redis.io) for persistence and messaging</h3>
@@ -121,7 +130,7 @@
 </div>
 
 <div class="slide" id="arch-stuff">
-  <h2>Architecture - High Level</h2>
+  <h2>Architecture - High Level <br> <img src="http://i.imgur.com/JwhL3.gif"></h2>
   <ul>
     <li class="slide">Application Server (Node.JS) handles basic http request and chat connections</li>
     <li class="slide">Streaming Server (Node.JS) loads MP3 Files from the filesystem and serves them in real time</li>
@@ -131,6 +140,7 @@
 </div>
 
 <div class="slide" id="archdiagram">
+  <h2>Here's a diagram that we're really proud of</h2>
   <img src="outloud_arch.png" alt="" />
 </div>
 
@@ -239,7 +249,7 @@
   <ul>
     <li>Chaining lots of callbacks gets ugly + hard to read! Break them out into reusable functions or use helper libs (async.js?)</li>
     <li>Single threaded... (nginx/haproxy in front?)</li>
-    <li>Low-level can be a pain</li>
+    <li>Low-<h2>Here's a diagram that we're really proud of</h2>level can be a pain</li>
     <li>API is changing really quickly</li>
     <li>Debugging can be tricky, and NodeJS itself is young and may still have bugs, as well as its libraries</li>
     <li>Javascript is a drag sometimes (switch to Coffeescript maybe? whatever)</li>
@@ -266,8 +276,27 @@
         <td colspan="2">etc... (LOTS more)</td>
       </tr>
     </table>
-  
   </div>
+</div>
+
+<div class="slide" id="future">
+	<h2>The future of Outloud.fm</h2>
+	<img src="http://i.imgur.com/rGjFI.png" alt="" />
+	<p>Some stuff we're working on:</p>
+	<ul>
+    <li class="slide"><p>Public rooms!</p></li>
+    <li class="slide"><p>Mobile</p></li>
+    <li class="slide"><p>Member profiles</p></li>
+    <li class="slide"><p>Scaling infrastructure (less sexy)</p></li>
+ </ul>
+</div>
+
+<div class="slide" id="lastslide">
+	<h2>Obligatory slide about hiring</h2>
+     	<p>We're NOT hiring! Mostly because we have no money.</p> 
+     	<p>But, email us anyway! <b>info@outloud.fm</b> <img src="http://www.internetarchaeology.org/img/Moving/TechnologyScience/sendpcml.gif"></p>
+</div>
+
 </div>
 
 
