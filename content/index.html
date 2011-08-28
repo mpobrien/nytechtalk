@@ -73,7 +73,7 @@
       <p>about 6,000 active users</p>
 		</li>
     <li class="slide">
-      <p>over 8,000 songs "liked" (added to favorites list)</p>
+      <p>over 8,000 songs "liked" (added to favorites list by users)</p>
 		</li>
     <li class="slide">
            <h3>as seen on:</h3>
@@ -86,20 +86,21 @@
 </div>
 
 <div class="slide" id="introduction">
-	<h2>What we'll talk about</h2>
+	<h2>we will talk about</h2>
 	<ul>
     <li>
-			<h3>Overall architecture</h3>
+			<h3>Overview of architecture + the technology we use</h3>
 		</li>
     <li>
-      <h3>Some useful lessons learned</h3>
+      <h3>Some (hopefully) interesting details</h3>
       <ul>
         <li>How to use redis as a messaging hub</li>
-        <li>Pros/Cons of using node.js and a few notes on using it in production</li>
+        <li>Some helpful things we learned about using Node</li>
+        <li>How the mp3 spec works and how we use it to design a real-time streaming server</li>
       </ul>
     </li>
     <li>
-      <h3>How MP3 Streaming works</h3>
+      <h3>Whatever you want</h3>
     </li>
 	</ul>
 </div>
@@ -109,7 +110,7 @@
 	<h2>Technologies</h2>
 	<ul>
     <li class="slide">
-      <h3>outloud.fm is hosted on Linode.com </h3>
+      <h3>hosted on Linode.com </h3>
       <p> <img src="http://www.linode.com/images/linode_logo_gray.png"></img> </p>
 		</li>
 		<li class="slide">
@@ -123,7 +124,7 @@
 		</li>
 
 		<li class="slide">
-			<h3>We use redis (redis.io) for persistence and messaging</h3>
+			<h3>redis (redis.io) for persistence and messaging</h3>
       <p> <img width="300px" src="http://www.thebigbugtheory.com/wp-content/uploads/2010/12/82.png"/> </p>
 		</li>
 	</ul>
@@ -131,11 +132,20 @@
 
 <div class="slide" id="arch-stuff">
   <h2>Architecture - High Level <br> <img src="http://i.imgur.com/JwhL3.gif"></h2>
+  <h3>Back-end</h3>
   <ul>
-    <li class="slide">Application Server (Node.JS) handles basic http request and chat connections</li>
+    <li class="slide">Application Server (Node.JS) handles basic http requests and chat connections</li>
     <li class="slide">Streaming Server (Node.JS) loads MP3 Files from the filesystem and serves them in real time</li>
     <li class="slide">Several task processors (python + other stuff) consume messages from a messaging queue + process jobs</li>
     <li class="slide">All of these components talk to each other via Redis <b>(details on this later)</b></li>
+  </ul>
+  <h3 class="slide">Front-end</h3>
+  <ul>
+    <li class="slide">Mustache.js for template language</li>
+    <li class="slide">jQuery</li>
+    <li class="slide">SoundManager2 plays the audio stream (Some tracks come from SoundCloud CDNs)</li>
+    <li class="slide">WebSockets (HTML5) for real-time transport</li>
+    <li class="slide">Flash fallback for WebSockets helps ensure compatibility for most browsers that don't support it natively</li>
   </ul>
 </div>
 
@@ -161,16 +171,20 @@
   <h2>Method One: Publish/Subscribe</h2>
   <ul>
     <li class="slide">
-    <p>Your process(es) connect to redis and call <b>redisClient.subscribe(&lt;channel&gt;)</b></p>
-      <p>Attach an event handler (callback) to the "message" event for your pub/sub client</p>
-    </li>
-
-    <li class="slide">
-      <p>Then from any other redis connection, call redisClient.publish(&lt;channel&gt;, &lt;message&gt;)</p>
-    </li>
-
-    <li class="slide">
-      <p>When a message is published, the "message" event will be fired on any process subscribed to that channel</p>
+      <div>
+        Consumers: send the "subscribe" command to Redis, with a channel key.
+        Then bind an event handler to the "message" event
+        <pre> <code class="prettyprint">pubsubClient.subscribe("userjoined");
+ pubsubClient.on("message", function(channel, message){
+  if(channel=="userjoined"){
+    var messageInfo = JSON.parse(message);
+    //do whatever
+  }
+ }); </code> </pre>
+        Producers: send the "publish" command to redis, with the channel key + message.
+        <pre> <code class="prettyprint">redisClient.publish("userjoined",
+        JSON.stringify({"uid":user.id,"time":+new Date()})); </code> </pre>
+      </div>
     </li>
 
     <li class="slide">
@@ -180,49 +194,43 @@
     <li class="slide">
       <p>The "message" is just a string, so you can use JSON/Protocol Buffers/Whatever serialization you like (we use json)</p>
     </li>
+
   </ul>
 </div>
-
-<!-- Put a code sample here -->
-<!--pubsubClient.subscribe("chatmessage");-->
 
 <div class="slide" id="messaginghow2">
   <h2>Method Two: Lists and BLPOP/BRPOP</h2>
   <p>Great for messaging to processes that aren't event-based (python, etc)</p>
-  <p>Excellent for a barebones <b>messaging queue</b> - run as many producers/consumers as you want</p>
+  <p>Excellent as a barebones <b>messaging queue</b> - run as many producers/consumers as you want</p>
   <ul>
     <li class="slide">Redis has a LIST datatype which supports O(1) push/pop from either end of the list: (LPUSH/LPOP and RPUSH/RPOP)</li>
 
     <li class="slide">These data types also support blocking pop: BLPOP, BRPOP, BRPOPLPUSH: the process will block until there's an item available to pop from the list</li>
     <li class="slide">Producers put messages onto the queue with RPUSH, consumers process them by calling LPOP</li>
-    <li class="slide">In NodeJS (Application Server), after an upload completes, we queue up a message saying "upload is done!" like this:
-    <pre>
-      <code class="prettyprint">
-        fileUpload.on("filedone", function(){
-          var uploadedFileInfo = JSON.stringify({"path":fullPath,
-                                                 "room":roomname, 
-                                                 "uploader":uploaderInfo.name,
-                                                 "uid":uploaderInfo.uidkey,
-                                                 "fname":fname});
-          redisClient.rpush("newsongready", uploadedFileInfo);
-        });
-      </code>
-    </pre>
+    <li class="slide">PUSHes and POPs are atomic, so it guarantees that only 1 consumer gets the message</li>
+    <li class="slide">Example: In NodeJS (Application Server), after an upload completes, we queue up a message saying "upload is done!" like this:
+    <pre><code class="prettyprint">fileUpload.on("filedone", function(){
+  var uploadedFileInfo = JSON.stringify({"path":fullPath,
+                                         "room":roomname, 
+                                         "uploader":uploaderInfo.name,
+                                         "uid":uploaderInfo.uidkey,
+                                         "fname":fname});
+  redisClient.rpush("newsongready", uploadedFileInfo);
+}); </code></pre>
     
     
     
     </li>
-    <li class="slide">Our python code for preprocessor looks like this:
-      <pre><code class="prettyprint">
-      while True:
-        try:
-          message = r.blpop("newsongready");
-          songInfo = json.loads(message[1])
-          parsedFile = loadMetaData(songInfo)
-          processFile(parsedFile, songInfo, outputDir)
-        except Exception, e: 
-          print "Couldn't parse audio information, skipping:", e
-          traceback.print_exc(file=sys.stdout)
+    <li class="slide">Preprocessor (python) POPs these messages off the queue and processes them in sequence
+      <pre><code class="prettyprint">while True:
+  try:
+    message = r.blpop("newsongready");
+    songInfo = json.loads(message[1])
+    parsedFile = loadMetaData(songInfo)
+    processFile(parsedFile, songInfo, outputDir)
+  except Exception, e: 
+    print "Couldn't parse audio information, skipping:", e
+    traceback.print_exc(file=sys.stdout)
       </code></pre>
     </li>
   </ul>
@@ -235,10 +243,9 @@
 	<h2>Why Node.JS ?</h2>
 	<ul>
     <li class="slide"> <p>Good performance while handling lots of concurrent connections</p> </li>
-    <li class="slide"> <p>Easy to re-use code between the front-end and backend</p> </li>
+    <li class="slide"> <p>Easy to re-use code between the front-end and backend (validating form data, for example) </p> </li>
     <li class="slide"> <p>Simple to get access at the protocol/socket level <b>(helpful for streaming!)</b></p> </li>
-    <li class="slide"> <p>Writing asynchronous/event driven code is baked into the language, not a library or plugin (e.g. Twisted)</p> </li>
-    <li class="slide"> <p>Helpful and active community, with lots of libraries out there</p> </li>
+    <li class="slide"> <p>Writing asynchronous/event driven code is baked into the language rather than a library or plugin (e.g. Twisted)</p> </li>
     <li class="slide"> <p>Javascript is fun</p> </li>
     <li class="slide"> <p>Node is so hip and I wanted to learn it</p> </li>
   </ul>
@@ -247,12 +254,12 @@
 <div class="slide" id="whynodejs">
 	<h2>Node gotchas</h2>
   <ul>
-    <li>Chaining lots of callbacks gets ugly + hard to read! Break them out into reusable functions or use helper libs (async.js?)</li>
-    <li>Single threaded... (nginx/haproxy in front?)</li>
-    <li>Low-<h2>Here's a diagram that we're really proud of</h2>level can be a pain</li>
-    <li>API is changing really quickly</li>
-    <li>Debugging can be tricky, and NodeJS itself is young and may still have bugs, as well as its libraries</li>
-    <li>Javascript is a drag sometimes (switch to Coffeescript maybe? whatever)</li>
+    <li class="slide">Chaining lots of callbacks gets ugly + hard to read! Break them out into reusable functions or use helper libs (async.js?)</li>
+    <li class="slide">Single threaded... (nginx/haproxy in front?)</li>
+    <li class="slide">Low-level can be a pain</li>
+    <li class="slide">API has evolved quickly - you will probably see sample code online that doesn't even work anymore</li>
+    <li class="slide">Debugging with callbacks can be tricky and NodeJS definitely still has bugs</li>
+    <li class="slide">Javascript is a drag sometimes (switch to Coffeescript maybe? whatever)</li>
   </ul>
 </div>
 
@@ -263,8 +270,10 @@
     <div style="padding:20px;border:1px solid black; text-align:center; width:300px;">1 or more MP3 Frames<br/>&#x22ee;<br/>&#x22ee;</div>
     <div style="padding:20px;border:1px solid black; text-align:center; width:300px;">Optional 128 Byte ID3v1 Header, always starts with "TAG"</div>
   </div>
+</div>
 
-  <div class="slide">
+<div class="slide">
+  <div>
     <h3>ID3v2 are delimited chunks of data with "tags" to indicate what kind of data they have</h3>
     <table cellspacing="0">
       <tr><td>AENC</td>    <td>[#sec4.20 Audio encryption] </td></tr>
@@ -277,7 +286,24 @@
       </tr>
     </table>
   </div>
+  <br />
+
+  <div class="slide">
+    We parse out tags in python (mutagen) and store the important ones in Redis under a different key for each song:
+    <pre><code>INCR maxsongid
+SET ("s_" + maxsongid) {"Title":"Ignition (Remix)", &hellip;</div>
+    </code>
+    </pre>
+  </div>
 </div>
+
+<div class="slide">
+  <h2>MP3 Frame structure</h2>
+
+
+
+</div>
+ <div></div>
 
 <div class="slide" id="future">
 	<h2>The future of Outloud.fm</h2>
@@ -287,7 +313,8 @@
     <li class="slide"><p>Public rooms!</p></li>
     <li class="slide"><p>Mobile</p></li>
     <li class="slide"><p>Member profiles</p></li>
-    <li class="slide"><p>Scaling infrastructure (less sexy)</p></li>
+    <li class="slide"><p>Scaling out and improving infrastructure (less sexy)</p></li>
+    <li class="slide"><p>Lots of other stuff</p></li>
  </ul>
 </div>
 
