@@ -361,10 +361,7 @@ redisClient.zrevrange("fave_" + uidkey, lowerBound, upperBound, function(err, re
                                          "fname":fname});
   redisClient.rpush("newsongready", uploadedFileInfo);
 }); </code></pre>
-    
-    
-    
-    </li>
+</li>
     <li class="slide">Preprocessor (python) POPs these messages off the queue and processes them in sequence
       <pre><code class="prettyprint">while True:
   try:
@@ -395,17 +392,6 @@ redisClient.zrevrange("fave_" + uidkey, lowerBound, upperBound, function(err, re
   </ul>
 </div>
 
-<div class="slide" id="nodegotchas">
-	<h2>Node gotchas</h2>
-  <ul>
-    <li class="slide">Chaining lots of callbacks gets ugly and hard to read - better to break them out into reusable functions or use helper libs (flow.js, async.js) when it gets complicated</li>
-    <li class="slide">Single threaded... (nginx/haproxy in front?)</li>
-    <li class="slide">Low-level...</li>
-    <li class="slide">API has evolved quickly - you will probably see sample code out there that doesn't even work anymore</li>
-    <li class="slide">Debugging with callbacks can be tricky and NodeJS definitely still has bugs</li>
-    <li class="slide">Javascript is a drag sometimes (switch to Coffeescript maybe? whatever)</li>
-  </ul>
-</div>
 <div class="slide" style="margin:0px; padding:0px">
   <h2>writing code in nodejs style</h2>
   <ul>
@@ -433,6 +419,18 @@ redisClient.incr("counter", function(err, reply){});</code></pre></div>
     </li>
   </ul>
 </div>
+
+<div class="slide" id="nodegotchas">
+	<h2>Node gotchas</h2>
+  <ul>
+    <li class="slide">Chaining lots of callbacks gets ugly and hard to read - better to break them out into reusable functions or use helper libs (flow.js, async.js) when it gets complicated</li>
+    <li class="slide">Single threaded... (nginx/haproxy in front?)</li>
+    <li class="slide">Low-level...</li>
+    <li class="slide">API has evolved quickly - you will probably see sample code out there that doesn't even work anymore</li>
+    <li class="slide">Debugging with callbacks can be tricky and NodeJS definitely still has bugs</li>
+    <li class="slide">Javascript is a drag sometimes (switch to Coffeescript maybe? whatever)</li>
+  </ul>
+</div>
 <div class="slide">
   <h2>Important in NodeJS: EventEmitter class</h2>
   <ul>
@@ -454,6 +452,10 @@ redisClient.incr("counter", function(err, reply){});</code></pre></div>
     <div style="padding:20px;border:1px solid black; text-align:center; width:300px;">1 or more MP3 Frames<br/>&#x22ee;<br/>&#x22ee;</div>
     <div style="padding:20px;border:1px solid black; text-align:center; width:300px;">Optional 128 Byte ID3v1 Header, always starts with "TAG"</div>
   </div>
+  <ul>
+    <li class="slide">If a user uploads a format other than MP3, we transcode it using FFMPEG</li>
+    <li class="slide">If the MP3 isn't the right bitrate, transcode it (prevents bugginess on client side of stream)</li>
+  </ul>
 </div>
 
 <div class="slide">
@@ -496,17 +498,41 @@ SET ("s_" + maxsongid) {"Title":"Ignition (Remix)", &hellip;</div>
         </code>
       </li>
       <li>Serve the frame data and delay next frame parse with javascript <code>setTimeout()</code></li>
+      <li>Use accumulated time over 128 frames to smooth out timing</li>
     </ul>
   </div>
 </div>
+<div class="slide">
+  <h2>Some streamserver details</h2>
+  <ul>
+    <li>The streamserver is its own independent HTTP server</li>
+    <li>Good performance with 100s of connections - CPU usage rarely above 10%</li>
+    <li>Each room on the site has a queue stored in a sorted set (using the songId as the score)<br/> under the key <code>roomqueue_&lt;roomname&gt;</code></li>
+    <li>We can shutdown/restart the streaming server as necessary and the song queue is left intact (except the currently playing song)</li>
+    <li>As each song is done streaming (or skipped), stream server does:
+    <br />
+    <code>
+      zrange roomqueue_&lt;roomname&gt; 0 0 WITHSCORES (returns lowest ranked key and its score)
+      zremrangebyscore roomqueue_&lt;roomname&gt; score score // removes that lowest element
+    </code>
+    <li>Read the file into memory and start serving it</li>
+    <li>Server also receives notification via pub/sub when new songs are queued - if it's idle, it will then check the queue again</li>
+  </ul>
+</div>
+<div></div>
 
 <div class="slide">
   <h2>SoundCloud</h2>
-    <li>Robust API</li>
-    <li>songs stream off their CDN</li>
-    <li>We filter search results based on song's privacy setting and length (<20min)</li>
-    <li class="slide">our low-budget alternative to MediaNet (used by Turntable.fm) <img src="ypU3Q.png"></li>
-    <li class="slide"><img src="mFOOa.png">
+    <li class="slide">Robust API</li>
+    <li class="slide">songs stream off their CDN</li>
+    <li class="slide">We filter search results based on song's privacy setting and length (&lt;20min tracks)</li>
+    <li class="slide">Store the track metadata and length - pause MP3 stream for the room for duration of soundcloud song</li>
+    <li class="slide">our low-budget alternative to MediaNet (used by Turntable.fm) </li>
+    <div class="slide">
+      <div style="float:left" class="slide"> <img src="ypU3Q.png"/> </div>
+      <div style="float:right" class="slide"> <img src="mFOOa.png"/> </div>
+      <div style="clear:both"></div>
+    </div>
  </div>
 
 <div class="slide" id="future">
@@ -517,6 +543,7 @@ SET ("s_" + maxsongid) {"Title":"Ignition (Remix)", &hellip;</div>
     <li class="slide"><p>Public rooms!</p></li>
     <li class="slide"><p>Mobile</p></li>
     <li class="slide"><p>Member profiles</p></li>
+    <li class="slide"><p>Bug fixing</p></li>
     <li class="slide"><p>Scaling out and improving infrastructure (less sexy)</p></li>
     <li class="slide"><p>Lots of other stuff</p></li>
  </ul>
@@ -524,10 +551,21 @@ SET ("s_" + maxsongid) {"Title":"Ignition (Remix)", &hellip;</div>
 
 <div class="slide" id="lastslide">
 	<h2>Obligatory slide about hiring</h2>
-     	<p>We're NOT hiring! Mostly because we have no money.</p> 
-     	<p><img src="sendpcml.gif" style="margin:0; float:left;"> But, email us anyway! <b><u>info@outloud.fm </b></u></p>
-	<p>&nbsp; &nbsp; &nbsp; Or find us on Twitter - @outloudfm</p>
-</div>
+  <p>We're NOT hiring! Mostly because we have no money.</p> 
+  <div>
+    <img src="sendpcml.gif" style="margin:0; float:left;">
+    <p>But, email us anyway! <b><u>info@outloud.fm </b></u></p>
+  </div>
+  <div style="clear:both"></div>
+  <br />
+  <div>
+    <p>Or find us on Twitter:</p>
+    <ul>
+      <li>@outloudfm</li>
+      <li>@HeafLedger</li>
+      <li>@mpobrien</li>
+    </ul>
+  </div>
 
 </div>
 
