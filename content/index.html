@@ -1,3 +1,4 @@
+<html>
 
 <!DOCTYPE html>
 <!--[if lt IE 7]> <html class="no-js ie6" lang="en"> <![endif]-->
@@ -5,29 +6,30 @@
 <!--[if IE 8]>    <html class="no-js ie8" lang="en"> <![endif]-->
 <!--[if gt IE 8]><!-->  <html class="no-js" lang="en"> <!--<![endif]-->
 <head>
-	<meta charset="utf-8">
-	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-	
-	<title>NYC Tech Talks - OUTLOUD.FM</title>
-	
-	<!-- Core and extension CSS files -->
-	<link rel="stylesheet" href="prettify.css">
-	<link rel="stylesheet" href="../core/deck.core.css">
-	<link rel="stylesheet" href="../extensions/goto/deck.goto.css">
-	<link rel="stylesheet" href="../extensions/menu/deck.menu.css">
-	<link rel="stylesheet" href="../extensions/navigation/deck.navigation.css">
-	<link rel="stylesheet" href="../extensions/status/deck.status.css">
-	<link rel="stylesheet" href="../extensions/hash/deck.hash.css">
-	
-	<!-- Theme CSS files (menu swaps these out) -->
-	<link rel="stylesheet" id="style-theme-link" href="../themes/style/web-2.0.css">
-	<link rel="stylesheet" id="transition-theme-link" href="../themes/transition/horizontal-slide.css">
-	
-	<!-- Custom CSS just for this page -->
-	<link rel="stylesheet" href="introduction.css">
-	<script src="../modernizr.custom.js"></script>
-	<script src="prettify.js"></script>
+       <meta charset="utf-8">
+       <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+       
+       <title>NYC Tech Talks - OUTLOUD.FM</title>
+       
+       <!-- Core and extension CSS files -->
+       <link rel="stylesheet" href="prettify.css">
+       <link rel="stylesheet" href="../core/deck.core.css">
+       <link rel="stylesheet" href="../extensions/goto/deck.goto.css">
+       <link rel="stylesheet" href="../extensions/menu/deck.menu.css">
+       <link rel="stylesheet" href="../extensions/navigation/deck.navigation.css">
+       <link rel="stylesheet" href="../extensions/status/deck.status.css">
+       <link rel="stylesheet" href="../extensions/hash/deck.hash.css">
+       
+       <!-- Theme CSS files (menu swaps these out) -->
+       <link rel="stylesheet" id="style-theme-link" href="../themes/style/web-2.0.css">
+       <link rel="stylesheet" id="transition-theme-link" href="../themes/transition/horizontal-slide.css">
+       
+       <!-- Custom CSS just for this page -->
+       <link rel="stylesheet" href="introduction.css">
+       <script src="../modernizr.custom.js"></script>
+       <script src="prettify.js"></script>
 </head>
+
 
 <body class="deck-container" onload="prettyPrint()">
 
@@ -95,7 +97,7 @@
 	<h2>we will talk about:</h2>
 	<ul>
     <li>
-			<h3>Overview of architecture + the technology we use</h3>
+			<h3>Some overview of architecture + the technology we use</h3>
 		</li>
     <li>
       <h3>Some (hopefully) interesting details</h3>
@@ -155,6 +157,128 @@
   </ul>
 </div>
 
+<div class="slide">
+  <h2>Redis overview</h2>
+  <ul>
+    <li class="slide">Redis is stupid fast (~100k ops/sec), single-threaded, dataset in memory, supports replication</li>
+    <li class="slide">fsync() policy can be tuned, so you can trade speed for durability (or vice-versa)</li>
+    <li class="slide">Commands run atomically, and you can execute blocks in a transaction with MULTI/EXEC</li>
+    <li class="slide">Objects in Redis are associated with a unique key like memcache, but support a bunch of different primitive data types</li>
+    <li class="slide">Support for Lua scripting in branch (!!!) under active development</li>
+    <li class="slide">handy, usable REPL</li>
+    <li class="slide">documentation site (redis.io) is awesome IMHO</li>
+  </ul>
+</div>
+<div class="slide">
+  <h2>Redis Datatypes</h2>
+  <ul>
+    <li class="slide">Integers+Strings: Work like regular key/val; Use as atomic counter for generating unique ID's, or storing serialized objects, etc.
+    <pre>
+<code>$ SET counter 100
+$ GET counter
+100
+$ INCR counter
+101
+$ INCRBY counter 5
+106
+$ SET foobar "hell yeah"
+$ GET foobar
+hell yeah</code>
+    </pre>
+    </li>
+  </div>
+  <div class="slide">
+    <h2>Redis Lists</h2>
+    <ul>
+      <li class="slide">Linked list of values supports O(1) push/pop from either end, O(n) fetching a range, and more (example: an event feed, twitter stream, etc.)</li>
+      <li>
+<pre><code> # Push 3 items onto the end of a list:
+$ RPUSH events "lorem ipsum"
+$ RPUSH events "dolor sit amet" 
+$ RPUSH events "consectetur adipiscing elit" 
+# Get the size of the list:
+$ LLEN events
+3
+# get items number 0 through 2:
+$ LRANGE events 0 2
+ 1. lorem ipsum                
+ 2. dolor sit amet             
+ 3. consectetur adipiscing elit
+$ LPOP events
+lorem ipsum</code></pre></li>
+<li class="slide">We use redis lists as simple message queues - (more on this later)</li>
+<li class="slide">Another common use case: Logging with LPUSH, retain only most recent N events with LTRIM (like a capped collection)</li>
+</ul>
+</div>
+<div class="slide">
+  <h2>Sets</h2>
+  <ul>
+  <li class="slide">Sets: Holds a collection of unique values, O(1) add/remove/cardinality/membership (example: list a user's followers)</li>
+  <li class="slide">Example: Tracking who's favorited a song
+  
+<pre><code># Add some members to the set
+$ SADD favers_123 "x"
+$ SADD favers_123 "y" 
+$ SADD favers_123 "z" 
+$ SADD favers_123 "x" 
+$ SCARD favers_123
+3
+$ SMEMBERS favers_123
+ 1. x
+ 2. y
+ 3. z</code> </pre>
+  </li>
+  <li class="slide">User favorites a song: SADD faves_&lt;songid&gt; &lt;user_id&gt;</li>
+  <li class="slide">Then we can check how popular the song was with SCARD faves_&lt;songid&gt;</li>
+  <li class="slide">&hellip;or list the IDs of all the people who favorited the song with SMEMBERS</li>
+</ul>
+</div>
+<div class="slide">
+  <h2>Sorted Sets</h2>
+  <ul>
+    <li class="slide">Sorted Set: Same as a set (unique values) but each item has an associated score.<br/></li>
+    <li class="slide">Items can be fetched by score range - useful for "indexing" other items in Redis for quick access</li>
+    <li>
+    We insert into the set with <code>ZADD &lt;key&gt; &lt;SCORE&gt; &lt;ITEM&gt;</code><br/><br/>
+    We retrieve items from the set by RANK with: <code>ZRANGE &lt;key&gt; &lt;start&gt; &lt;start&gt;</code><br/><br/> 
+    or by SCORE with: <code>ZRANGEBYSCORE &lt;key&gt; &lt;min&gt; &lt;max&gt;</code><br/><br/> 
+    </li>
+    <li class="slide">Example: Favorites - a  time-indexed collection of song ID's
+<pre>
+<code class="prettyprint">
+// The user clicked the heart: add it to the user's favorites
+// insert songId into the set with current time as the score
+redisClient.multi([
+  ["zadd","fave_" + uidkey, new Date().getTime(), songId],
+  ["sadd", "favers_" + songId, uidkey],
+]).exec();
+
+//Get the 10 most recently favorited songs
+// i.e. 10 items with highest ranked timestamps
+var lowerBound = 0
+var upperBound = lowerBound + 9
+redisClient.zrevrange("fave_" + uidkey, lowerBound, upperBound, function(err, reply){
+  if(reply){ //'reply' contains the songIds
+    var keys = []
+    for(var i=0;i&lt;data.length;i++){
+      keys.push("s_" + data[i]);
+    }
+    redisClient.mget(keys, function(err2, data2){
+      var songInfo = data2;
+      //Now songInfo is an array where each item 
+      //holds the data stored under each songId
+    }
+  }
+});
+</code>
+</pre>
+</li>
+  </ul>
+</div>
+
+
+</div>
+
 <div class="slide" id="archdiagram">
   <h2>Here's a diagram that we think is really cool:</h2>
   <img src="outloud_arch.png" alt="" />
@@ -172,6 +296,7 @@
     <li><p>Songs start or end &rarr; Update the "now playing" info</p></li>
   </ul>
 </div>
+
 
 <div class="slide" id="messaginghow1">
   <h2>Method One: Publish/Subscribe</h2>
@@ -208,10 +333,9 @@
   <h2>Method Two: Lists and BLPOP/BRPOP</h2>
   <p>Great for messaging to processes that aren't event-based (python, etc)</p>
   <p>Excellent as a barebones <b>messaging queue</b> - run as many producers/consumers as you want</p>
+  <p>If your DB is configured for it properly, the queue is durable</p>
   <ul>
-    <li class="slide">Redis has a LIST datatype which supports O(1) push/pop from either end of the list: (LPUSH/LPOP and RPUSH/RPOP)</li>
-
-    <li class="slide">These data types also support blocking pop: BLPOP, BRPOP, BRPOPLPUSH: the process will block until there's an item available to pop from the list</li>
+    <li class="slide">The redis LIST data types also support blocking pop: BLPOP, BRPOP, BRPOPLPUSH: the process will block until there's an item available to pop from the list (FIFO)</li>
     <li class="slide">Producers put messages onto the queue with RPUSH, consumers process them by calling LPOP</li>
     <li class="slide">PUSHes and POPs are atomic, so it guarantees that only 1 consumer gets the message</li>
     <li class="slide">Example: In NodeJS (Application Server), after an upload completes, we queue up a message saying "upload is done!" like this:
