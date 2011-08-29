@@ -359,7 +359,7 @@ redisClient.zrevrange("fave_" + uidkey, lowerBound, upperBound, function(err, re
     parsedFile = loadMetaData(songInfo)
     processFile(parsedFile, songInfo, outputDir)
   except Exception, e: 
-    print "Couldn't parse audio information, skipping:", e
+    print "Error occurred processing queue message", e
     traceback.print_exc(file=sys.stdout)
       </code></pre>
     </li>
@@ -480,7 +480,7 @@ SET ("s_" + maxsongid) {"Title":"Ignition (Remix)", &hellip;</div>
 
 <a href="." title="Permalink to this slide" class="deck-permalink">#</a>
 
-<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.js"></script>
+<script src="jquery.min.js"></script>
 <script>window.jQuery || document.write('<script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.6.1.min.js">\x3C/script>')</script>
 
 <!-- Deck Core and extensions -->
