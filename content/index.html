@@ -152,7 +152,7 @@
     <li class="slide">Mustache.js for template language</li>
     <li class="slide">jQuery</li>
     <li class="slide">SoundManager2 plays the audio stream (Some tracks come from SoundCloud CDNs)</li>
-    <li class="slide">WebSockets (HTML5) for real-time transport</li>
+    <li class="slide">WebSockets (HTML5) for real-time messaging transport</li>
     <li class="slide">Flash fallback for WebSockets helps ensure compatibility for most browsers that don't support it natively</li>
   </ul>
 </div>
@@ -166,7 +166,7 @@
   <h2>Redis overview</h2>
   <ul>
     <li class="slide">Redis is stupid fast (~100k ops/sec), single-threaded, dataset in memory, supports replication</li>
-    <li class="slide">fsync() policy can be tuned, so you can trade speed for durability (or vice-versa)</li>
+    <li class="slide">fsync() policy can be configured, so you can trade speed for durability or vice-versa</li>
     <li class="slide">Commands run atomically, and you can pipeline a block of commands in a transaction with MULTI/EXEC</li>
     <li class="slide">Objects in Redis are associated with a unique key like memcache, but support a bunch of different primitive data types</li>
     <li class="slide">Support for Lua scripting in branch (!!!) under active development</li>
@@ -393,7 +393,7 @@ redisClient.zrevrange("fave_" + uidkey, lowerBound, upperBound, function(err, re
 </div>
 
 <div class="slide" style="margin:0px; padding:0px">
-  <h2>writing code in nodejs style</h2>
+  <h2>writing asynchronous code with nodejs</h2>
   <ul>
     <li class="slide">Functions that do I/O, timers, etc. are asynchronous and take a callback as argument</li>
     <li class="slide">Nest asynchronous functions with their callbacks to execute code in sequence. </li>
@@ -413,12 +413,50 @@ redisClient.zrevrange("fave_" + uidkey, lowerBound, upperBound, function(err, re
 redisClient.incr("counter", function(err, reply){});
 redisClient.incr("counter", function(err, reply){});
 redisClient.incr("counter", function(err, reply){});</code></pre></div>
-    <div style="float:right">(Deeper = "serial", Same level = "parallel")<img src="inception.jpg"/>
+    <div style="float:right">(Deeper &rarr; serial, Colocated &rarr; parallel)<img src="inception.jpg"/>
     </div>
     </div>
     </li>
   </ul>
 </div>
+ <div class="slide">
+  <h2>Useful in NodeJS: EventEmitter class</h2>
+  <ul>
+    <li>Kind of like redis pub/sub, but just inside the code</li>
+    <li>Extend your class with EventEmitter prototype</li>
+    <li>Link callbacks to object instances of the class: 
+<pre><code>item.on("ping", function(){
+  console.log("pong!");
+})</code></pre> </li>
+  </ul>
+  <li class="slide"> Your class fires the event with: <code>emit("ping")</code> </li>
+  <li class="slide">Integrates nicely with Redis PUBLISH/SUBSCRIBE</li>
+  </div>
+  <div class="slide">
+    <h2>
+      Example: Propagating real-time events from streamserver to HTTP 
+    </h2>
+    <div>
+      <h3>In the stream server</h3>
+      <ul>
+      <li>Two classes: Mp3Stream and StreamRoom inherit from EventEmitter</li>
+      <li>Mp3Stream manages low-level stream parsing, StreamRoom manages per-room song queue state + interface to HTTP server</li>
+      <li>Mp3Stream room <code>emit</code>s "streamend" event when it hits the end of an audio file,<br/> 
+        &rarr; StreamRoom intercepts event, fetches next file info from queue + resets stream, <br/>
+          and <code>publish</code>es message to redis that the song in a room switched, using channel "filechanged"
+      </li>
+      <h3>In the app server</h3>
+      <li>
+        App server is <code>subscribe</code>d to "filechanged" channel, so it gets fired when streamserver publishes<br/>
+        When it's fired, app server looks up websocket connections for the room, publishes the information to anyone connected
+      </li>
+    </ul>
+  </div>
+
+
+
+</div>
+  
 
 <div class="slide" id="nodegotchas">
 	<h2>Node gotchas</h2>
@@ -426,33 +464,22 @@ redisClient.incr("counter", function(err, reply){});</code></pre></div>
     <li class="slide">Chaining lots of callbacks gets ugly and hard to read - better to break them out into reusable functions or use helper libs (flow.js, async.js) when it gets complicated</li>
     <li class="slide">Single threaded... (nginx/haproxy in front?)</li>
     <li class="slide">Low-level...</li>
-    <li class="slide">API has evolved quickly - you will probably see sample code out there that doesn't even work anymore</li>
     <li class="slide">Debugging with callbacks can be tricky and NodeJS definitely still has bugs</li>
     <li class="slide">Javascript is a drag sometimes (switch to Coffeescript maybe? whatever)</li>
   </ul>
 </div>
-<div class="slide">
-  <h2>Important in NodeJS: EventEmitter class</h2>
-  <ul>
-    <li>Extend your class with EventEmitter prototype</li>
-    <li>Link callbacks to object instances of the class: 
-<pre><code>item.on("ping", function(){
-  console.log("pong!");
-})</code></pre> </li>
-    <li>
-    </li>
-  </ul>
 
-</div>
 
 <div class="slide" id="mp3stuff">
-	<h2>MP3 Spec</h2>
+	<h2>MP3 Handling Stuff</h2>
   <div class="slide">
+    <h3>Mp3 Spec</h3>
     <div style="padding:20px;border:1px solid black; text-align:center; width:300px;">Zero or more ID3v2 Items</div>
     <div style="padding:20px;border:1px solid black; text-align:center; width:300px;">1 or more MP3 Frames<br/>&#x22ee;<br/>&#x22ee;</div>
     <div style="padding:20px;border:1px solid black; text-align:center; width:300px;">Optional 128 Byte ID3v1 Header, always starts with "TAG"</div>
   </div>
   <ul>
+    <li class="slide">Preprocessor prepares the uploaded files to be used by the streaming server</li>
     <li class="slide">If a user uploads a format other than MP3, we transcode it using FFMPEG</li>
     <li class="slide">If the MP3 isn't the right bitrate, transcode it (prevents bugginess on client side of stream)</li>
   </ul>
@@ -473,13 +500,23 @@ redisClient.incr("counter", function(err, reply){});</code></pre></div>
     </table>
   </div>
   <br />
-
+  <div>Preprocessor</div>
   <div class="slide">
     We parse out tags in python (mutagen) and store the important ones in Redis under a different key for each song:
     <pre><code>INCR maxsongid
-SET ("s_" + maxsongid) {"Title":"Ignition (Remix)", &hellip;</div>
-    </code>
-    </pre>
+SET ("s_" + maxsongid) {"Title":"Ignition (Remix)", &hellip;</code></pre>
+  </div>
+  <div class="slide">
+    Some audio files have embedded album art.
+  </div>
+  <div>
+    <ul>
+      <li class="slide">Generate a hash of the image data to see if it's already been processed before (Redis Set: <code>SISMEMBER</code>)</li>
+      <li class="slide">Extract, write image data to file</li>
+      <li class="slide">Scale it down</li>
+      <li class="slide">Store in S3 bucket using hash as key</li>
+      <li class="slide">Store hash in DB as part of song metadata</li>
+    </ul>
   </div>
 </div>
 
@@ -530,7 +567,7 @@ SET ("s_" + maxsongid) {"Title":"Ignition (Remix)", &hellip;</div>
     <li class="slide">our low-budget alternative to MediaNet (used by Turntable.fm) </li>
     <div class="slide">
       <div style="float:left" class="slide"> <img src="ypU3Q.png"/> </div>
-      <div style="float:right" class="slide"> <img src="mFOOa.png"/> </div>
+      <div style="float:right" class="slide"><img src="mFOOa.png"/> </div>
       <div style="clear:both"></div>
     </div>
  </div>
@@ -570,14 +607,18 @@ SET ("s_" + maxsongid) {"Title":"Ignition (Remix)", &hellip;</div>
 </div>
 
 
+<!--
 <a href="#" class="deck-prev-link" title="Previous">&#8592;</a>
 <a href="#" class="deck-next-link" title="Next">&#8594;</a>
+-->
 
+<!--
 <p class="deck-status">
 	<span class="deck-status-current"></span>
 	/
 	<span class="deck-status-total"></span>
 </p>
+-->
 
 <form action="." method="get" class="goto-form">
 	<label for="goto-slide">Go to slide:</label>
