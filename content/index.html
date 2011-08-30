@@ -94,20 +94,27 @@
 	<h2>We will talk about:</h2>
 	<ul>
     <li>
-			<h3>Some overview of architecture + the technology we use</h3>
+			<h3>Some overview of architecture + the technology we use + how they work</h3>
 		</li>
     <li>
       <h3>Some (hopefully) interesting details</h3>
       <ul>
-        <li>How to use redis as a messaging hub</li>
-        <li>Some helpful things we learned about using Node</li>
-        <li>A bit about how the mp3 spec works and how we use it in the streaming server</li>
+        <li>How we use redis as a messaging hub</li>
+        <li>How we take advantage of Node for real-time stuff</li>
+        <li>A bit about how the MP3 spec works and how we use it in the streaming server</li>
       </ul>
     </li>
     <li>
       <h3>Whatever else you want (tech-related plz kthx)</h3>
     </li>
 	</ul>
+  <h3>Disclaimer</h3>
+  <ul>
+    <li>Technical with some (abridged) source code snippets</li>
+    <li>Skipping lots of details (ask if you want more)</li>
+    <li>Things are changing a lot</li>
+    <li>It's not perfect</li>
+  </ul>
 </div>
 
 
@@ -139,7 +146,7 @@
   <h2>Architecture - High Level <br> <img src="JwhL3.gif" style="margin:0;"></h2>
   <h3>Back-end</h3>
   <ul>
-    <li class="slide">Application Server (Node.JS) handles basic http requests and chat connections</li>
+    <li class="slide">Application Server (Node.JS) handles basic http requests and chat connections, as well as uploads</li>
     <li class="slide">Streaming Server (Node.JS) loads MP3 Files from the filesystem and serves them in real time</li>
     <li class="slide">Several task processors (python + other stuff) consume messages from a messaging queue + process jobs</li>
     <li class="slide">All of these components talk to each other via Redis <b>(details on this later)</b></li>
@@ -166,7 +173,6 @@
     <li class="slide">fsync() policy can be configured, so you can trade speed for durability or vice-versa</li>
     <li class="slide">Commands run atomically, and you can pipeline a block of commands in a transaction with MULTI/EXEC</li>
     <li class="slide">Objects in Redis are associated with a unique key like memcache, but support a bunch of different primitive data types</li>
-    <li class="slide">Support for Lua scripting in branch (!!!) under active development</li>
     <li class="slide">handy, usable REPL</li>
     <li class="slide">documentation site (redis.io) is awesome IMHO</li>
   </ul>
@@ -228,16 +234,19 @@ lorem ipsum</code></pre></li>
   <h2>Sets</h2>
   <ul>
   <li class="slide">Sets: Holds a collection of unique values, O(1) add/remove/cardinality/membership (example: list a user's followers)</li>
+  <li class="slide">Add to the set like this: SADD &lt;key&gt; &lt;value&gt;</li>
   <li class="slide">Example: Tracking who's favorited a song
   
 <pre><code># Add some members to the set
-$ SADD favers_123 "x"
-$ SADD favers_123 "y" 
-$ SADD favers_123 "z" 
-$ SADD favers_123 "x" 
-$ SCARD favers_123
+SADD favers_123 "x"
+SADD favers_123 "y" 
+SADD favers_123 "z" 
+SADD favers_123 "x" 
+
+SCARD favers_123
 3
-$ SMEMBERS favers_123
+
+ SMEMBERS favers_123
  1. x
  2. y
  3. z</code> </pre>
@@ -361,6 +370,50 @@ redisClient.zrevrange("fave_" + uidkey, lowerBound, upperBound, function(err, re
 </li>
 </div>
 
+<div class="slide">
+  <h2>HTTP messaging</h2>
+  <ul>
+    <li>We use WebSockets. Supported in Firefox4 (though disabled), Chrome, Safari</li>
+    <li>Works by "Upgrading" a regular HTTP connection</li>
+    <li>For unsupported browsers, Flash fallback (uses crossdomain.xml)</li>
+    <li>Kinda sucks overall because of poor compatibility even with fallback, but when it works it is awesome</li>
+    <li>Alternatives: Socket.IO or roll your own transport layer (long polling, iframe, etc)</li>
+  </ul>
+</div>
+<div class="slide">
+  <div>Client side:</div>
+<pre><code class="prettyprint">ws = new WebSocket(url);
+
+ws.onmessage = function(message){
+&hellip; // Fired when a message from the server reaches the client
+};
+
+ws.onopen = function(){
+  &hellip; // Fired when connection is made successfully
+  setInterval(function(){ ws.send("0") }, 45000);
+  ws.send("hell yeah bro"); // send a message with ws.send();
+} </code> </pre>
+  </ul>
+
+  <div>Server side:</div>
+<pre><code class="prettyprint">var ws = require("websocket-server");
+
+var websockserver = ws.createServer();
+
+server.addListener("request", function(req, res) {
+  //Handle an incoming regular HTTP connection
+})//}}}
+
+server.addListener("connection", function(connection){
+  //Handle the incoming WebSocket connection
+  ...
+  connection.addListener("message", function(msg){...});
+  connection.addListener("close", function(){...});
+});
+</code></pre>
+  </ul>
+</div>
+
 <div class="slide" id="messaginghow2">
     <br>
     <li>Preprocessor (python) POPs these messages off the queue and processes them in sequence
@@ -453,18 +506,15 @@ redisClient.incr("counter", function(err, reply){});</code></pre></div>
       </li>
     </ul>
   </div>
-
-
-
 </div>
   
 
 <div class="slide" id="nodegotchas">
 	<h2>Node gotchas</h2>
   <ul>
-    <li class="slide">Chaining lots of callbacks gets ugly and hard to read - better to break them out into reusable functions or use helper libs (flow.js, async.js) when it gets complicated</li>
-    <li class="slide">Single threaded... (nginx/haproxy in front?)</li>
-    <li class="slide">Low-level...</li>
+    <li class="slide">Chaining lots of callbacks gets hard to read: Break into re-usable functions as much as possible (or use a helper library)</li>
+    <li class="slide">Single threaded, so if you want a multi-core advantage you have more work to do (nginx/haproxy in front?)</li>
+    <li class="slide">Low-level&hellip;</li>
     <li class="slide">Debugging with callbacks can be tricky and NodeJS definitely still has bugs</li>
     <li class="slide">Javascript is a drag sometimes (switch to Coffeescript maybe? whatever)</li>
   </ul>
@@ -474,9 +524,11 @@ redisClient.incr("counter", function(err, reply){});</code></pre></div>
 <div class="slide" id="mp3stuff">
 	<h2>MP3 Handling Stuff</h2>
   <div class="slide">
-    <h3>Mp3 Spec</h3>
+    <h3>Mp3 File layout</h3>
     <div style="padding:20px;border:1px solid black; text-align:center; width:300px;">Zero or more ID3v2 Items</div>
-    <div style="padding:20px;border:1px solid black; text-align:center; width:300px;">1 or more MP3 Frames<br/>&#x22ee;<br/>&#x22ee;</div>
+    <div style="padding:20px;border:1px solid black; text-align:center; width:300px;">1 or more MP3 Frames<br/>
+      <div>32 bit frame header + frame data</div>
+      &#x22ee;<br/>&#x22ee;</div>
     <div style="padding:20px;border:1px solid black; text-align:center; width:300px;">Optional 128 Byte ID3v1 Header, always starts with "TAG"</div>
   </div>
   <ul>
@@ -486,20 +538,6 @@ redisClient.incr("counter", function(err, reply){});</code></pre></div>
 </div>
 
 <div class="slide">
-  <div>
-  <br> <br>
-    <h3>ID3v2 are delimited chunks of data with "tags" to indicate what kind of data they have</h3>
-    <table cellspacing="0">
-      <tr><td>AENC</td>    <td>[#sec4.20 Audio encryption] </td></tr>
-      <tr><td>APIC</td>    <td>[#sec4.15 Attached picture]</td></tr>
-      <tr><td>COMM</td>    <td>[#sec4.11 Comments]</td></tr>
-      <tr><td>COMR</td>    <td>[#sec4.25 Commercial frame]</td></tr>
-      <tr><td>ENCR</td>    <td>[#sec4.26 Encryption method registration]</td></tr>
-      <tr>
-        <td colspan="2">etc... (LOTS more)</td>
-      </tr>
-    </table>
-  </div>
   <br />
   <div>Preprocessor</div>
   <div class="slide">
@@ -519,6 +557,7 @@ SET ("s_" + maxsongid) {"Title":"Ignition (Remix)", &hellip;</code></pre>
       <li class="slide">Store hash in DB as part of song metadata</li>
     </ul>
   </div>
+ <div> We have an additional helper queue + process to handle songs from soundcloud (communicate with soundcloud JSON api) </div>
 </div>
 
 <div class="slide">
