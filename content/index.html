@@ -33,7 +33,7 @@
 
 <body class="deck-container" onload="prettyPrint()">
 
-<div class="theme-menu"><!--{{{-->
+<div class="theme-menu" style="display:none"><!--{{{-->
 	<h2>Themes</h2>	
 	
 	<label for="style-themes">Style:</label>
@@ -482,7 +482,6 @@ redisClient.incr("counter", function(err, reply){});</code></pre></div>
   <ul>
     <li class="slide">Preprocessor prepares the uploaded files to be used by the streaming server</li>
     <li class="slide">If a user uploads a format other than MP3, we transcode it using FFMPEG</li>
-    <li class="slide">If the MP3 isn't the right bitrate, transcode it (prevents bugginess on client side of stream)</li>
   </ul>
 </div>
 
