@@ -85,16 +85,13 @@
 		</li>
     <li class="slide">
            <h3>as seen on:</h3>
-         <img src="zoVpq.png"> 
-         <img src="cbioL.png"> 
-         <img src="wp2Kq.png">          
-         <img src="TuQP6.png">
+         <img src="mention.png" style="margin:0;"> 
                 </li> 
 	</ul>
 </div>
 
 <div class="slide" id="introduction">
-	<h2>we will talk about:</h2>
+	<h2>We will talk about:</h2>
 	<ul>
     <li>
 			<h3>Some overview of architecture + the technology we use</h3>
@@ -362,7 +359,11 @@ redisClient.zrevrange("fave_" + uidkey, lowerBound, upperBound, function(err, re
   redisClient.rpush("newsongready", uploadedFileInfo);
 }); </code></pre>
 </li>
-    <li class="slide">Preprocessor (python) POPs these messages off the queue and processes them in sequence
+</div>
+
+<div class="slide" id="messaginghow2">
+    <br>
+    <li>Preprocessor (python) POPs these messages off the queue and processes them in sequence
       <pre><code class="prettyprint">while True:
   try:
     message = r.blpop("newsongready");
@@ -487,6 +488,7 @@ redisClient.incr("counter", function(err, reply){});</code></pre></div>
 
 <div class="slide">
   <div>
+  <br> <br>
     <h3>ID3v2 are delimited chunks of data with "tags" to indicate what kind of data they have</h3>
     <table cellspacing="0">
       <tr><td>AENC</td>    <td>[#sec4.20 Audio encryption] </td></tr>
@@ -563,14 +565,10 @@ SET ("s_" + maxsongid) {"Title":"Ignition (Remix)", &hellip;</code></pre>
     <li class="slide">Robust API</li>
     <li class="slide">songs stream off their CDN</li>
     <li class="slide">We filter search results based on song's privacy setting and length (&lt;20min tracks)</li>
-    <li class="slide">Store the track metadata and length - pause MP3 stream for the room for duration of soundcloud song</li>
-    <li class="slide">our low-budget alternative to MediaNet (used by Turntable.fm) </li>
-    <div class="slide">
-      <div style="float:left" class="slide"> <img src="ypU3Q.png"/> </div>
-      <div style="float:right" class="slide"><img src="mFOOa.png"/> </div>
-      <div style="clear:both"></div>
+    <li class="slide">Store the track metadata and length - pause MP3 stream for the room for duration of SoundCloud song</li>
+    <li class="slide">our low-budget alternative to MediaNet (used by Turntable.fm) <img src="ypU3Q.png" style="float:right;margin:0;"/></li>
+    <div class="slide"> <img src="mFOOa.png" style="padding-top:30px; padding-right:40px;"/> </div>
     </div>
- </div>
 
 <div class="slide" id="future">
 	<h2>The future of Outloud.fm</h2>
