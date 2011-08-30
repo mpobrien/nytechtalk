@@ -371,6 +371,24 @@ redisClient.zrevrange("fave_" + uidkey, lowerBound, upperBound, function(err, re
 </li>
 </div>
 
+
+<div class="slide" id="messaginghow2">
+    <br>
+    <li>Preprocessor (python) POPs these messages off the queue and processes them in sequence
+      <pre><code class="prettyprint">while True:
+  try:
+    message = r.blpop("newsongready");
+    songInfo = json.loads(message[1])
+    parsedFile = prepareSongFile(songInfo)
+    processFile(parsedFile, songInfo, outputDir)
+  except Exception, e: 
+    print "Error occurred processing queue message", e
+    traceback.print_exc(file=sys.stdout)
+      </code></pre>
+    </li>
+  </ul>
+</div>
+
 <div class="slide">
   <h2>HTTP messaging</h2>
   <ul>
@@ -381,6 +399,7 @@ redisClient.zrevrange("fave_" + uidkey, lowerBound, upperBound, function(err, re
     <li>Alternatives: Socket.IO or roll your own transport layer (long polling, iframe, etc)</li>
   </ul>
 </div>
+
 <div class="slide">
   <div>Client side:</div>
 <pre><code class="prettyprint">ws = new WebSocket(url);
@@ -412,23 +431,6 @@ server.addListener("connection", function(connection){
   connection.addListener("close", function(){...});
 });
 </code></pre>
-  </ul>
-</div>
-
-<div class="slide" id="messaginghow2">
-    <br>
-    <li>Preprocessor (python) POPs these messages off the queue and processes them in sequence
-      <pre><code class="prettyprint">while True:
-  try:
-    message = r.blpop("newsongready");
-    songInfo = json.loads(message[1])
-    parsedFile = prepareSongFile(songInfo)
-    processFile(parsedFile, songInfo, outputDir)
-  except Exception, e: 
-    print "Error occurred processing queue message", e
-    traceback.print_exc(file=sys.stdout)
-      </code></pre>
-    </li>
   </ul>
 </div>
 
